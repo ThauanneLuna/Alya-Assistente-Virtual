@@ -70,7 +70,7 @@ projetos:['Projetos, decisões, referências e pendências. Requer armazenamento
 tarefas:['Acompanhamento de tarefas. Requer armazenamento e lógica no servidor.',['Pendentes','Concluídas','Atrasadas']],
 agenda:['Compromissos e lembretes. Requer integração com agenda e notificações.',['Compromissos','Prazos','Lembretes']]};
 const ST={idle:'Microfone desligado',perm:'Aguardando permissão',ouvindo:'Ouvindo',pensando:'Processando',falando:'Falando',falha:'Falha no microfone'};
-let au=null,ac,an,fd,stream,rec,tok=0,mode='idle',busy=false,lastUser='',speakOn=true,fsz=15;
+let au=null,ac,an,fd,stream,rec,tok=0,mode='idle',busy=false,lastUser='',speakOn=true,fsz=15,endT=0,player=null;
 const convs=[];let cc=null;
 
 // ===== Navegação =====
@@ -155,15 +155,35 @@ rec.onend=()=>{if(my!==tok)return;stopMic();rec=null;last.trim()?ask(last.trim()
 try{rec.start()}catch(e){fail('Não foi possível iniciar o reconhecimento de voz.')}}
 function say(t,ex,log=true){const my=++tok;md('falando');if(log)addMsg('a',t);
 X._f={...(X[ex]||X.repouso),m:X.falando.m,sp:1,eq:0,lk:0,dr:0};set('_f');sub(t);
-let d=0;const end=()=>{if(d||my!==tok)return;d=1;idle(true)};
+let d=0;const end=()=>{if(d||my!==tok)return;d=1;clearTimeout(endT);idle(true)};
 const tts=speakOn&&t;
 if(tts&&CFG.tts)speakEL(t,my,end);
-setTimeout(end,CFG.tts&&tts?60000:t.length*60+1500)}
-async function speakEL(t,my,end){try{
-const r=await fetch(CFG.tts,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:t})});
-if(!r.ok)throw 0;const b=await r.blob();if(my!==tok)return;
-const u=URL.createObjectURL(b);au=new Audio(u);au.onended=au.onerror=()=>{URL.revokeObjectURL(u);au=null;end()};
-await au.play()}catch(e){end()}}
+clearTimeout(endT);endT=setTimeout(end,CFG.tts&&tts?90000:t.length*60+1500)}
+function vozErro(m){console.error('[Alya voz]',m);sub('Voz indisponível: '+m);addMsg('e','Não consegui reproduzir a voz: '+m+' A resposta continua disponível em texto.',false,false)}
+async function speakEL(t,my,end){
+const ctl=new AbortController(),to=setTimeout(()=>ctl.abort(),20000);
+try{let r;
+try{r=await fetch(CFG.tts,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:t}),signal:ctl.signal})}
+catch(e){throw new Error(e.name==='AbortError'?'a geração da voz demorou demais.':'sem conexão com a função de voz (confira se a função "tts" está publicada).')}
+finally{clearTimeout(to)}
+if(!r.ok){let m='código '+r.status;try{const j=await r.json();m=(j.error&&j.error.message)||m}catch(e){}
+if(r.status===402)m='a ElevenLabs recusou por plano ou créditos (402). '+m;
+if(r.status===404)m='função de voz não encontrada (404).';
+throw new Error(m)}
+const b=await r.blob();if(my!==tok)return;
+if(!b.size||!/audio/.test(b.type))throw new Error('o servidor não devolveu um áudio válido.');
+const u=URL.createObjectURL(b);stopAudio();
+const a=player||(player=new Audio());au=a;
+a.onended=()=>{URL.revokeObjectURL(u);if(au===a)au=null;end()};
+a.onerror=()=>{URL.revokeObjectURL(u);if(au===a)au=null;vozErro('o navegador não conseguiu tocar o áudio.');end()};
+a.onloadedmetadata=()=>{clearTimeout(endT);endT=setTimeout(end,((a.duration||30)+5)*1000)};
+a.src=u;
+try{await a.play()}catch(e){URL.revokeObjectURL(u);throw new Error(e.name==='NotAllowedError'?'o navegador bloqueou o som automático. Toque na tela e tente de novo.':'falha ao iniciar o áudio.')}
+}catch(e){if(my===tok){vozErro(e.message||'erro desconhecido.');end()}}}
+const SILENT='data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=';
+function unlockAudio(){document.removeEventListener('pointerdown',unlockAudio);document.removeEventListener('keydown',unlockAudio);
+try{const a=player||(player=new Audio());a.muted=true;a.src=SILENT;const p=a.play();Promise.resolve(p).catch(()=>{}).finally(()=>{a.pause();a.muted=false})}catch(e){}}
+document.addEventListener('pointerdown',unlockAudio);document.addEventListener('keydown',unlockAudio);
 $('mic').onclick=listen;$('stopv').onclick=stop;
 if(!SR){$('mic').title='Reconhecimento de voz indisponível neste navegador'}
 
