@@ -116,7 +116,7 @@ const ctl=new AbortController(),to=setTimeout(()=>ctl.abort(),25000);let r;
 try{r=await fetch(CFG.proxy,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:msgs}),signal:ctl.signal})}
 catch(e){throw{m:e.name==='AbortError'?'A resposta demorou demais. Tente de novo.':'Sem conexão com o servidor. Verifique a internet e tente de novo.'}}
 finally{clearTimeout(to)}
-if(!r.ok)throw{m:'O servidor não conseguiu responder agora (código '+r.status+'). Tente de novo em instantes.'};
+if(!r.ok){let d='';try{const j=await r.json();d=String((j.error&&j.error.message)||j.message||'').slice(0,90)}catch(e){}throw{m:'O servidor não conseguiu responder agora (código '+r.status+(d?' · '+d:'')+'). Tente de novo em instantes.'}}
 try{const j=await r.json();return JSON.parse(j.choices[0].message.content)}catch(e){throw{m:'A resposta do servidor veio em um formato inesperado.'}}}
 async function ask(t,retry){if(busy)return;busy=true;$('send').disabled=true;lastUser=t;
 if(!retry)addMsg('u',t);
