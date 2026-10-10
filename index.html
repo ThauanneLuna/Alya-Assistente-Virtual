@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
+<meta name="theme-color" content="#000000">
+<title>Alya</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body data-s="inicio">
+<header class="top">
+<button id="menu" aria-label="Abrir menu" aria-expanded="false" aria-controls="drawer">☰</button>
+<h1 id="ttl">Início</h1>
+<span id="chip" role="status" data-m="idle">Microfone desligado</span>
+</header>
+<div id="scrim" hidden></div>
+<nav id="drawer" aria-label="Principal"></nav>
+<main id="app">
+<section class="scr" id="s-inicio">
+<div class="face">
+<button class="tg" id="tg" aria-pressed="false">Só rosto</button>
+<svg viewBox="0 0 200 190" role="img" aria-label="Rosto da Alya">
+<g id="face">
+<path id="eL" fill="none" stroke="#d68cff" stroke-linecap="round"/>
+<path id="eR" fill="none" stroke="#d68cff" stroke-linecap="round"/>
+<g transform="translate(100 104)">
+<path id="mp" fill="none" stroke="#d68cff" stroke-width="4" stroke-linecap="round"/>
+<ellipse id="me" fill="#d68cff" stroke="#d68cff"/>
+</g>
+</g>
+<g id="eq" fill="#d68cff"></g>
+</svg>
+</div>
+<div class="right">
+<div id="log" role="log" aria-label="Conversa com a Alya"></div>
+<div id="sub" aria-live="polite"></div>
+</div>
+</section>
+<section class="scr" id="s-conversas" hidden>
+<div class="row"><button id="nova">+ Nova conversa</button></div>
+<p class="note">As conversas ficam apenas nesta aba e somem ao recarregar a página. Não há salvamento permanente.</p>
+<div id="cl"></div>
+</section>
+<section class="scr" id="s-config" hidden>
+<h2>Aparência</h2>
+<div class="row"><button id="fsm" aria-label="Diminuir texto">A−</button><button id="fsp" aria-label="Aumentar texto">A+</button><button id="rm" aria-pressed="false">Reduzir animações</button></div>
+<h2>Voz</h2>
+<div class="row"><button id="spk" aria-pressed="true">Falar respostas em voz alta</button></div>
+<p class="note">A voz da Alya é gerada pelo ElevenLabs, através do seu servidor. Se a voz não estiver disponível, ela responde só por texto.</p>
+<h2>Notificações</h2>
+<p class="badge">Pendente</p>
+<p class="note">Notificações dependem de um back-end e de permissão do sistema. Ainda não existem.</p>
+<h2>Privacidade</h2>
+<p class="note">As conversas ficam só nesta aba. Nada é enviado a nenhum servidor até que a conexão com a IA seja configurada; quando for, o texto das mensagens será enviado ao servidor para gerar respostas, e o texto das respostas da Alya será enviado ao serviço de voz. O microfone só é usado enquanto o estado "Ouvindo" estiver ativo.</p>
+</section>
+</main>
+<form class="bar" id="bar" autocomplete="off">
+<input id="txt" placeholder="Fale ou digite" aria-label="Mensagem para a Alya" enterkeyhint="send">
+<button type="submit" id="send" aria-label="Enviar mensagem">Enviar</button>
+<button type="button" id="mic" aria-pressed="false">Falar</button>
+<button type="button" id="stopv" hidden>Calar</button>
+</form>
+<script src="app.js" defer></script>
+</body>
+</html>
