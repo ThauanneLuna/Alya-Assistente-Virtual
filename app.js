@@ -113,7 +113,7 @@ $('nova').onclick=newConv;
 async function chat(msgs){
 if(!CFG.proxy)throw{m:'A Alya ainda não está conectada a uma IA. Falta configurar o servidor (CFG.proxy no app.js).',retry:false};
 const ctl=new AbortController(),to=setTimeout(()=>ctl.abort(),25000);let r;
-try{r=await fetch(CFG.proxy,{method:'POST',headers:{'Content-Type':'application/json',...(window.AlyaAuth?window.AlyaAuth.hdr():{})},body:JSON.stringify({messages:msgs}),signal:ctl.signal})}
+try{r=await fetch(CFG.proxy,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:msgs}),signal:ctl.signal})}
 catch(e){throw{m:e.name==='AbortError'?'A resposta demorou demais. Tente de novo.':'Sem conexão com o servidor. Verifique a internet e tente de novo.'}}
 finally{clearTimeout(to)}
 if(!r.ok){let d='';try{const j=await r.json();d=String((j.error&&j.error.message)||j.message||'').slice(0,90)}catch(e){}throw{m:'O servidor não conseguiu responder agora (código '+r.status+(d?' · '+d:'')+'). Tente de novo em instantes.'}}
@@ -123,7 +123,7 @@ if(!retry)addMsg('u',t);
 const ld=addMsg('ld','');const my=++tok;md('pensando');set('pensando');sub('');
 try{const r=await chat(histMsgs());ld.remove();if(my!==tok)return;
 const f=String(r.fala||'').trim();if(!f)throw{m:'A Alya respondeu vazio. Tente de novo.'};
-say(f,r.expressao);window.AlyaAuth&&window.AlyaAuth.proposal(r.mem)}
+say(f,r.expressao)}
 catch(e){ld.remove();if(my===tok){const m=(e&&e.m)||'Algo deu errado. Tente de novo.';idle(true);set('confusao');sub(m);addMsg('e',m,e&&e.retry===false?false:true)}}
 finally{busy=false;$('send').disabled=false}}
 $('bar').onsubmit=e=>{e.preventDefault();const v=$('txt').value.trim();if(!v||busy)return;if(mode!=='idle'&&mode!=='falha')stop();$('txt').value='';ask(v)};
