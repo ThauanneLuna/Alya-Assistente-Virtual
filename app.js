@@ -145,13 +145,13 @@ if(mode==='falando'){stop();return}
 if(busy)return;
 if(!SR){sub('Este navegador não oferece reconhecimento de voz. Digite no campo abaixo.');$('txt').focus();return}
 const my=++tok;md('perm');set('ouvindo');sub('Aguardando permissão do microfone…');
-const ok=await startMic();if(my!==tok)return;
+const MOB=/Android|iPhone|iPad|iPod/i.test(navigator.userAgent);const ok=MOB?true:await startMic();if(my!==tok)return;
 if(!ok){fail('Microfone bloqueado ou indisponível. Libere a permissão no navegador (o site precisa estar em HTTPS) ou digite.');return}
 md('ouvindo');sub('Ouvindo…');
 let last='';rec=new SR();rec.lang='pt-BR';rec.interimResults=true;
 rec.onresult=e=>{last=[...e.results].map(r=>r[0].transcript).join('');sub(last)};
-rec.onerror=e=>{if(my!==tok)return;fail(e.error==='no-speech'?'Não ouvi nada. Tente de novo.':(e.error==='not-allowed'||e.error==='service-not-allowed')?'Reconhecimento de voz bloqueado neste aparelho. Digite no campo abaixo.':'Falha no reconhecimento de voz. Tente de novo.')};
-rec.onend=()=>{if(my!==tok)return;stopMic();rec=null;last.trim()?ask(last.trim()):idle()};
+rec.onerror=e=>{if(my!==tok)return;fail(e.error==='no-speech'?'Não ouvi nada. Tente de novo.':(e.error==='not-allowed'||e.error==='service-not-allowed')?'Reconhecimento de voz bloqueado neste aparelho. Digite no campo abaixo.':e.error==='audio-capture'?'Não consegui usar o microfone. Feche outros apps que o usem e tente de novo.':e.error==='network'?'O reconhecimento de voz precisa de internet. Verifique a conexão.':'Falha no reconhecimento de voz ('+e.error+'). Tente de novo.')};
+rec.onend=()=>{if(my!==tok)return;stopMic();rec=null;last.trim()?ask(last.trim()):(idle(true),sub('Não captei sua fala. Toque no microfone e tente de novo.'))};
 try{rec.start()}catch(e){fail('Não foi possível iniciar o reconhecimento de voz.')}}
 function say(t,ex,log=true){const my=++tok;md('falando');if(log)addMsg('a',t);
 X._f={...(X[ex]||X.repouso),m:X.falando.m,sp:1,eq:0,lk:0,dr:0};set('_f');sub(t);
