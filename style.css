@@ -31,7 +31,7 @@ button[aria-pressed=true]{background:var(--c);color:#000;border-color:var(--c)}
 .right{flex:1;min-height:0;display:flex;flex-direction:column}
 #log{flex:1;min-height:0;overflow-y:auto;padding:8px 14px;display:flex;flex-direction:column;gap:8px}
 #log:empty::before{content:"Converse com a Alya por texto ou voz.";margin:auto;color:var(--muted);font-size:13px}
-#sub{padding:2px 16px;text-align:center;font-size:13px;color:var(--muted);min-height:1.6em}
+#sub{padding:6px 20px;text-align:center;font-size:calc(var(--fs) + 5px);line-height:1.4;color:#e6d6f0;min-height:1.6em;max-height:32dvh;overflow-y:auto}
 .solo .face{flex:1}.solo .right{flex:0 0 auto}.solo #log{display:none}
 .msg{max-width:85%;padding:8px 14px;border-radius:18px;overflow-wrap:anywhere;white-space:pre-wrap}
 .msg .who{display:block;font-size:11px;opacity:.7;margin-bottom:1px}

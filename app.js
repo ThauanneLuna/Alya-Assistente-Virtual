@@ -124,7 +124,7 @@ const ld=addMsg('ld','');const my=++tok;md('pensando');set('pensando');sub('');
 try{const r=await chat(histMsgs());ld.remove();if(my!==tok)return;
 const f=String(r.fala||'').trim();if(!f)throw{m:'A Alya respondeu vazio. Tente de novo.'};
 say(f,r.expressao)}
-catch(e){ld.remove();if(my===tok){const m=(e&&e.m)||'Algo deu errado. Tente de novo.';idle();set('confusao');sub(m);addMsg('e',m,e&&e.retry===false?false:true)}}
+catch(e){ld.remove();if(my===tok){const m=(e&&e.m)||'Algo deu errado. Tente de novo.';idle(true);set('confusao');sub(m);addMsg('e',m,e&&e.retry===false?false:true)}}
 finally{busy=false;$('send').disabled=false}}
 $('bar').onsubmit=e=>{e.preventDefault();const v=$('txt').value.trim();if(!v||busy)return;if(mode!=='idle'&&mode!=='falha')stop();$('txt').value='';ask(v)};
 $('txt').onfocus=()=>{const l=$('log');setTimeout(()=>{l.scrollTop=l.scrollHeight},250)};
@@ -135,7 +135,7 @@ const sub=t=>{$('sub').textContent=t||''};
 function micBands(){if(!an||mode!=='ouvindo')return null;an.getByteFrequencyData(fd);return[1,2,3,4,6,8,11].map(i=>Math.min(1,(fd[i]||0)/190))}
 async function startMic(){try{stream=await navigator.mediaDevices.getUserMedia({audio:true});ac=new(window.AudioContext||window.webkitAudioContext)();an=ac.createAnalyser();an.fftSize=64;an.smoothingTimeConstant=.7;ac.createMediaStreamSource(stream).connect(an);fd=new Uint8Array(an.frequencyBinCount);return true}catch(e){an=null;return false}}
 function stopMic(){stream&&stream.getTracks().forEach(t=>t.stop());ac&&ac.close().catch(()=>{});an=ac=stream=null}
-function idle(){tok++;md('idle');set('repouso');setTimeout(()=>{if(mode==='idle')sub('')},2500)}
+function idle(keep){tok++;md('idle');set('repouso');if(!keep)setTimeout(()=>{if(mode==='idle')sub('')},2500)}
 function stopAudio(){if(au){au.onended=au.onerror=null;au.pause();au=null}}
 function stop(){tok++;stopAudio();try{rec&&rec.abort()}catch(e){}rec=null;stopMic();window.speechSynthesis&&speechSynthesis.cancel();md('idle');set('repouso');sub('')}
 function fail(m){tok++;try{rec&&rec.abort()}catch(e){}rec=null;stopMic();md('falha');set('tristeza');sub(m);setTimeout(()=>{if(mode==='falha'){md('idle');set('repouso')}},4500)}
@@ -155,7 +155,7 @@ rec.onend=()=>{if(my!==tok)return;stopMic();rec=null;last.trim()?ask(last.trim()
 try{rec.start()}catch(e){fail('Não foi possível iniciar o reconhecimento de voz.')}}
 function say(t,ex,log=true){const my=++tok;md('falando');if(log)addMsg('a',t);
 X._f={...(X[ex]||X.repouso),m:X.falando.m,sp:1,eq:0,lk:0,dr:0};set('_f');sub(t);
-let d=0;const end=()=>{if(d||my!==tok)return;d=1;idle()};
+let d=0;const end=()=>{if(d||my!==tok)return;d=1;idle(true)};
 const tts=speakOn&&t;
 if(tts&&CFG.tts)speakEL(t,my,end);
 setTimeout(end,CFG.tts&&tts?60000:t.length*60+1500)}
