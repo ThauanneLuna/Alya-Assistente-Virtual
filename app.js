@@ -113,7 +113,7 @@ $('nova').onclick=newConv;
 async function chat(msgs){
 if(!CFG.proxy)throw{m:'A Alya ainda não está conectada a uma IA. Falta configurar o servidor (CFG.proxy no app.js).',retry:false};
 const ctl=new AbortController(),to=setTimeout(()=>ctl.abort(),25000);let r;
-try{r=await fetch(CFG.proxy,{method:'POST',headers:{'Content-Type':'application/json',...(window.AlyaAuth?window.AlyaAuth.hdr():{})},body:JSON.stringify({messages:msgs}),signal:ctl.signal})}
+try{r=await fetch(CFG.proxy,{method:'POST',headers:(window.AlyaAuth&&window.AlyaAuth.hdr().Authorization)?{'Content-Type':'application/json',...window.AlyaAuth.hdr()}:{'Content-Type':'text/plain;charset=UTF-8'},body:JSON.stringify({messages:msgs}),signal:ctl.signal})}
 catch(e){throw{m:e.name==='AbortError'?'A resposta demorou demais. Tente de novo.':'Sem conexão com o servidor. Verifique a internet e tente de novo.'}}
 finally{clearTimeout(to)}
 if(!r.ok){let d='';try{const j=await r.json();d=String((j.error&&j.error.message)||j.message||'').slice(0,90)}catch(e){}throw{m:'O servidor não conseguiu responder agora (código '+r.status+(d?' · '+d:'')+'). Tente de novo em instantes.'}}
@@ -139,21 +139,22 @@ function idle(keep){tok++;md('idle');set('repouso');if(!keep)setTimeout(()=>{if(
 function stopAudio(){if(au){au.onended=au.onerror=null;au.pause();au=null}}
 function stop(){tok++;stopAudio();try{rec&&rec.abort()}catch(e){}rec=null;stopMic();window.speechSynthesis&&speechSynthesis.cancel();md('idle');set('repouso');sub('')}
 function fail(m){tok++;try{rec&&rec.abort()}catch(e){}rec=null;stopMic();md('falha');set('tristeza');sub(m);setTimeout(()=>{if(mode==='falha'){md('idle');set('repouso')}},4500)}
+function setNoan(){try{localStorage.setItem('alya_noan','1')}catch(e){}}
 async function listen(){
 if(mode==='ouvindo'||mode==='perm'){stop();return}
 if(mode==='falando'){stop();return}
 if(busy)return;
 if(!SR){sub('Este navegador não oferece reconhecimento de voz. Digite no campo abaixo.');$('txt').focus();return}
 const my=++tok;md('perm');set('ouvindo');sub('Aguardando permissão do microfone…');
-const MOB=/Android|iPhone|iPad|iPod/i.test(navigator.userAgent);const ok=MOB?true:await startMic();if(my!==tok)return;
+const NOAN=(()=>{try{return localStorage.getItem('alya_noan')==='1'}catch(e){return false}})();const ok=NOAN?true:await startMic();if(my!==tok)return;
 if(!ok){fail('Microfone bloqueado ou indisponível. Libere a permissão no navegador (o site precisa estar em HTTPS) ou digite.');return}
 md('ouvindo');sub('Ouvindo…');
 let last='';rec=new SR();rec.lang='pt-BR';rec.interimResults=true;
-let done=false,silT=0;
+let done=false,silT=0,gotErr=false;
 const finish=()=>{if(done||my!==tok)return;done=true;clearTimeout(silT);const r0=rec;rec=null;try{r0&&r0.abort()}catch(e){}stopMic();const t=last.trim();t?ask(t):(idle(true),sub('Não captei sua fala. Toque no microfone e tente de novo.'))};
 rec.onresult=e=>{last=[...e.results].map(r=>r[0].transcript).join('');sub(last);clearTimeout(silT);const fin=e.results[e.results.length-1].isFinal;silT=setTimeout(finish,fin?250:1800)};
-rec.onerror=e=>{if(my!==tok)return;fail(e.error==='no-speech'?'Não ouvi nada. Tente de novo.':(e.error==='not-allowed'||e.error==='service-not-allowed')?'Reconhecimento de voz bloqueado neste aparelho. Digite no campo abaixo.':e.error==='audio-capture'?'Não consegui usar o microfone. Feche outros apps que o usem e tente de novo.':e.error==='network'?'O reconhecimento de voz precisa de internet. Verifique a conexão.':'Falha no reconhecimento de voz ('+e.error+'). Tente de novo.')};
-rec.onend=finish;
+rec.onerror=e=>{if(my!==tok)return;gotErr=true;if(e.error==='audio-capture')setNoan();fail(e.error==='no-speech'?'Não ouvi nada. Tente de novo.':(e.error==='not-allowed'||e.error==='service-not-allowed')?'Reconhecimento de voz bloqueado neste aparelho. Digite no campo abaixo.':e.error==='audio-capture'?'Não consegui usar o microfone. Feche outros apps que o usem e tente de novo.':e.error==='network'?'O reconhecimento de voz precisa de internet. Verifique a conexão.':'Falha no reconhecimento de voz ('+e.error+'). Tente de novo.')};
+const t0=Date.now();rec.onend=()=>{if(!last&&!gotErr&&Date.now()-t0<2000)setNoan();finish()};
 try{rec.start()}catch(e){fail('Não foi possível iniciar o reconhecimento de voz.')}}
 function say(t,ex,log=true){const my=++tok;md('falando');if(log)addMsg('a',t);
 X._f={...(X[ex]||X.repouso),m:X.falando.m,sp:1,eq:0,lk:0,dr:0};set('_f');sub(t);
@@ -165,7 +166,7 @@ function vozErro(m){console.error('[Alya voz]',m);sub('Voz indisponível: '+m);a
 async function speakEL(t,my,end){
 const ctl=new AbortController(),to=setTimeout(()=>ctl.abort(),20000);
 try{let r;
-try{r=await fetch(CFG.tts,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:t}),signal:ctl.signal})}
+try{r=await fetch(CFG.tts,{method:'POST',headers:{'Content-Type':'text/plain;charset=UTF-8'},body:JSON.stringify({text:t}),signal:ctl.signal})}
 catch(e){throw new Error(e.name==='AbortError'?'a geração da voz demorou demais.':'sem conexão com a função de voz (confira se a função "tts" está publicada).')}
 finally{clearTimeout(to)}
 if(!r.ok){let m='código '+r.status;try{const j=await r.json();m=(j.error&&j.error.message)||m}catch(e){}
