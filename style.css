@@ -64,3 +64,7 @@ form.row{align-items:center}
 .mems{display:grid;gap:10px}
 .mems .mt{color:#e0cfe8;font-size:var(--fs);margin-bottom:8px}
 .mcard .row{margin:8px 0 0}
+
+.scr textarea{width:100%;box-sizing:border-box;background:var(--card);color:#e0cfe8;border:1px solid var(--line);border-radius:14px;padding:12px;font:inherit;margin:8px 0}
+.chk{display:flex;gap:10px;align-items:flex-start;color:#e0cfe8;padding:8px 0;font-size:var(--fs)}
+.scr .chk input{flex:none;min-width:22px;width:22px;min-height:22px;padding:0;margin-top:2px}
