@@ -10,11 +10,12 @@ const ONE={decisao:'Decisão',ideia:'Ideia',referencia:'Referência',pendencia:'
 const FILT=[['ativos','Ativos'],['concluidos','Concluídos'],['arquivados','Arquivados'],['todos','Todos']];
 const uid=()=>crypto.randomUUID();
 const tchg=()=>C.bus.emit('tasks','projetos');
+const pub=v=>C.bus.emit('data',{k:'projects',v});
 const short=(t,n=80)=>t.length>n?t.slice(0,n)+'…':t;
 
 async function load(){
   sess=C.session();
-  if(!sb||!sess){state='out';render();return}
+  if(!sb||!sess){state='out';pub(null);render();return}
   state='load';render();
   try{
     const [p,n,tk]=await Promise.all([
@@ -23,8 +24,9 @@ async function load(){
       sb.from('tasks').select('id,project_id,title,status,due_at').is('deleted_at',null)]);
     if(p.error)throw p.error;if(n.error)throw n.error;if(tk.error)throw tk.error;
     projs=p.data||[];notes=n.data||[];tks=tk.data||[];state='ok';
+    pub(projs.map(x=>({id:x.id,status:x.status})));
     if(view.n==='detail'){if(projs.some(x=>x.id===view.id))await loadHist();else view={n:'list'}}
-  }catch(e){state='err';msg=emsg(e)}
+  }catch(e){state='err';msg=emsg(e);pub(false)}
   render();
 }
 async function loadHist(){const r=await sb.from('project_history').select('summary,created_at').eq('project_id',view.id).order('created_at',{ascending:false}).limit(30);hist=r.data||[]}
@@ -37,10 +39,10 @@ const ok=r=>{if(r&&r.error)throw r.error;return r};
 function render(){
   sec.textContent='';
   sec.appendChild(el('h2','','Projetos'));
-  if(!sb||state==='out'||!sess){sec.appendChild(el('p','note','Entre na conta (tela Memória) para criar e consultar seus projetos.'));return}
-  if(state==='load'){sec.appendChild(el('p','note','Carregando…'));return}
-  if(state==='err'){sec.appendChild(el('p','note',msg));sec.appendChild(btn('Tentar de novo',load));return}
-  if(msg)sec.appendChild(el('p','note',msg));
+  if(!sb||state==='out'||!sess){sec.appendChild(el('p','note empty','Entre na conta (tela Memória) para criar e consultar seus projetos.'));return}
+  if(state==='load'){sec.appendChild(el('p','note load','Carregando…'));return}
+  if(state==='err'){sec.appendChild(el('p','note err',msg));sec.appendChild(btn('Tentar de novo',load));return}
+  if(msg)sec.appendChild(el('p','note msg',msg));
   if(view.n==='form')return form();
   if(view.n==='detail'&&cur())return detail(cur());
   list();
@@ -59,7 +61,7 @@ function list(){
     const s=q.trim().toLowerCase();
     const items=projs.filter(p=>(filt==='todos'||(filt==='ativos'?(p.status==='ativo'||p.status==='pausado'):filt==='concluidos'?p.status==='concluido':p.status==='arquivado'))
       &&(!s||[p.name,p.description,p.goal].some(x=>(x||'').toLowerCase().includes(s))||notes.some(n=>n.project_id===p.id&&n.content.toLowerCase().includes(s))));
-    if(!items.length)box.appendChild(el('p','note',projs.length?'Nenhum projeto encontrado.':'Nenhum projeto ainda. Toque em "Novo projeto".'));
+    if(!items.length)box.appendChild(el('p','note empty',projs.length?'Nenhum projeto encontrado.':'Nenhum projeto ainda. Toque em "Novo projeto".'));
     items.forEach(p=>{
       const c=el('div','card');
       const h=el('div','row');h.append(el('h3','',p.name),el('span','badge',ST[p.status]));c.appendChild(h);
@@ -104,7 +106,7 @@ function detail(p){
     const ns=notes.filter(n=>n.project_id===p.id&&n.kind===k);
     sec.appendChild(el('h3','',KIND[k]+' ('+ns.length+')'));
     const box=el('div','mems');
-    if(!ns.length)box.appendChild(el('p','note','Nada registrado.'));
+    if(!ns.length)box.appendChild(el('p','note empty','Nada registrado.'));
     ns.forEach(n=>{
       const c=el('div','card');
       const t=el('p','mt'+(n.resolved?' dim':''),'');
@@ -128,7 +130,7 @@ function detail(p){
   const dv=x=>x.due_at?new Date(x.due_at).getTime():8.64e15;
   const pt=tks.filter(x=>x.project_id===p.id).sort((a,b)=>(a.status==='pendente'?0:1)-(b.status==='pendente'?0:1)||dv(a)-dv(b));
   sec.appendChild(el('h3','','Tarefas ('+pt.filter(x=>x.status==='pendente').length+' abertas)'));
-  const tb=el('div','mems');if(!pt.length)tb.appendChild(el('p','note','Nenhuma tarefa ligada a este projeto.'));
+  const tb=el('div','mems');if(!pt.length)tb.appendChild(el('p','note empty','Nenhuma tarefa ligada a este projeto.'));
   pt.slice(0,20).forEach(x=>{const c=el('div','card');const h=el('div','row');h.append(el('h3',x.status!=='pendente'?'dim':'',x.title));
     if(x.status==='pendente'&&x.due_at&&new Date(x.due_at)<new Date())h.appendChild(el('span','badge late','Atrasada'));
     if(x.status!=='pendente')h.appendChild(el('span','badge',x.status==='concluida'?'Concluída':'Cancelada'));c.appendChild(h);

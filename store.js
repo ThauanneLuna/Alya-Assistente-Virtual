@@ -76,8 +76,8 @@ function importUI(){
 function render(){
   if(!sec)return;
   sec.textContent='';
-  const note=t=>sec.appendChild(el('p','note',t));
-  if(!sb){sec.append(el('p','badge','Indisponível'));note('Não consegui carregar o serviço de contas. Verifique a conexão e recarregue a página.');return}
+  const note=(t,c)=>sec.appendChild(el('p','note'+(c?' '+c:''),t));
+  if(!sb){sec.append(el('p','badge','Indisponível'));note('Não consegui carregar o serviço de contas. Verifique a conexão e recarregue a página.','err');return}
   if(state==='out'||!sess){
     sec.appendChild(el('h2','','Entrar'));
     note('Você conversa com a Alya sem conta. A conta serve só para guardar a memória (e, depois, projetos, tarefas e agenda) com segurança.');
@@ -86,23 +86,23 @@ function render(){
     f.onsubmit=async ev=>{ev.preventDefault();go.disabled=true;
       const {error}=await sb.auth.signInWithOtp({email:i.value.trim(),options:{emailRedirectTo:location.origin+location.pathname}});
       msg=error?'Não consegui enviar o e-mail ('+(error.status===429?'muitos pedidos, espere um pouco':'tente de novo')+').':'Enviamos um link para '+i.value.trim()+'. Abra no mesmo aparelho e navegador.';render()};
-    sec.appendChild(f);if(msg)sec.appendChild(el('p','note',msg));return}
+    sec.appendChild(f);if(msg)sec.appendChild(el('p','note msg',msg));return}
   const top=el('div','row');top.append(el('span','badge','Conta: '+(sess.user.email||'conectada')),btn('Sair',async()=>{await sb.auth.signOut()}));sec.appendChild(top);
-  if(state==='load'){note('Carregando…');return}
-  if(state==='err'){note(msg);sec.appendChild(btn('Tentar de novo',load));return}
+  if(state==='load'){note('Carregando…','load');return}
+  if(state==='err'){note(msg,'err');sec.appendChild(btn('Tentar de novo',load));return}
   sec.appendChild(el('h2','','Memória de longo prazo'));
   const tg=el('button','',enabled?'Memória ligada':'Memória desligada');tg.type='button';tg.setAttribute('aria-pressed',enabled);
   tg.onclick=()=>run(async()=>{const {error}=await sb.from('settings').update({memory_enabled:!enabled}).eq('user_id',sess.user.id);if(error)throw error},!enabled?'Memória ligada.':'Memória desligada. A Alya não usa nem sugere memórias.');
   sec.appendChild(el('div','row')).appendChild(tg);
   note('A Alya só guarda algo depois que você confirmar. As conversas continuam sem ser salvas.');
-  if(msg)sec.appendChild(el('p','note',msg));
+  if(msg)sec.appendChild(el('p','note msg',msg));
   if(enabled){
     const f=el('form','row');const i=el('input','','');i.placeholder='Adicionar uma informação';i.maxLength=1000;i.setAttribute('aria-label','Nova memória');
     const a=el('button','','Salvar');a.type='submit';f.append(i,a);
     f.onsubmit=ev=>{ev.preventDefault();const v=i.value.trim();if(!v)return;run(async()=>{const {error}=await sb.from('memories').insert({content:v});if(error)throw error},'Salvo.')};
     sec.appendChild(f);sec.appendChild(importUI())}
   sec.appendChild(el('h2','','Salvo ('+mem.length+')'));
-  if(!mem.length)note('Nada salvo ainda.');
+  if(!mem.length)note('Nada salvo ainda.','empty');
   const box=el('div','mems');
   mem.forEach(m=>{const c=el('div','card');c.appendChild(el('p','mt',m.content));
     const r=el('div','row');

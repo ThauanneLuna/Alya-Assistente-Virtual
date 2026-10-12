@@ -9,6 +9,7 @@ const RANK={alta:0,media:1,baixa:2};
 const STT={pendente:'Pendente',concluida:'Concluída',cancelada:'Cancelada'};
 const FILT=[['pend','Pendentes'],['atras','Atrasadas'],['conc','Concluídas'],['canc','Canceladas'],['todas','Todas']];
 const uid=()=>crypto.randomUUID();
+const pub=v=>C.bus.emit('data',{k:'tasks',v});
 const pad=n=>String(n).padStart(2,'0');
 const toLocal=s=>{const d=new Date(s);return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())+'T'+pad(d.getHours())+':'+pad(d.getMinutes())};
 const fmt=s=>new Date(s).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'});
@@ -18,7 +19,7 @@ const pname=id=>{const p=projs.find(x=>x.id===id);return p?p.name:''};
 
 async function load(){
   sess=C.session();
-  if(!sb||!sess){state='out';render();return}
+  if(!sb||!sess){state='out';pub(null);render();return}
   state='load';render();
   try{
     const [t,p]=await Promise.all([
@@ -26,8 +27,9 @@ async function load(){
       sb.from('projects').select('id,name,status').is('deleted_at',null).order('name',{ascending:true})]);
     if(t.error)throw t.error;if(p.error)throw p.error;
     tasks=t.data||[];projs=p.data||[];state='ok';
+    pub(tasks.filter(x=>x.status==='pendente').map(x=>({id:x.id,title:x.title,due_at:x.due_at})));
     if(view.n==='form'&&view.id&&!tasks.some(x=>x.id===view.id))view={n:'list'};
-  }catch(e){state='err';msg=emsg(e)}
+  }catch(e){state='err';msg=emsg(e);pub(false)}
   render();
 }
 async function run(f,okmsg){if(busy)return;busy=true;try{await f();msg=okmsg||'';C.bus.emit('tasks','tarefas')}catch(e){msg=(e&&e.code==='23505')?'Já estava salva.':emsg(e)}busy=false;await load()}
@@ -36,10 +38,10 @@ const setStatus=(t,s,m)=>run(async()=>ok(await sb.from('tasks').update({status:s
 function render(){
   sec.textContent='';
   sec.appendChild(el('h2','','Tarefas'));
-  if(!sb||state==='out'||!sess){sec.appendChild(el('p','note','Entre na conta (tela Memória) para criar e acompanhar suas tarefas.'));return}
-  if(state==='load'){sec.appendChild(el('p','note','Carregando…'));return}
-  if(state==='err'){sec.appendChild(el('p','note',msg));sec.appendChild(btn('Tentar de novo',load));return}
-  if(msg)sec.appendChild(el('p','note',msg));
+  if(!sb||state==='out'||!sess){sec.appendChild(el('p','note empty','Entre na conta (tela Memória) para criar e acompanhar suas tarefas.'));return}
+  if(state==='load'){sec.appendChild(el('p','note load','Carregando…'));return}
+  if(state==='err'){sec.appendChild(el('p','note err',msg));sec.appendChild(btn('Tentar de novo',load));return}
+  if(msg)sec.appendChild(el('p','note msg',msg));
   view.n==='form'?form():list();
 }
 
@@ -69,7 +71,7 @@ function list(){
     const s=q.trim().toLowerCase();
     const items=tasks.filter(t=>(filt==='todas'||(filt==='pend'&&t.status==='pendente')||(filt==='atras'&&late(t))||(filt==='conc'&&t.status==='concluida')||(filt==='canc'&&t.status==='cancelada'))
       &&(!pf||t.project_id===pf)&&(!s||[t.title,t.description,pname(t.project_id)].some(x=>(x||'').toLowerCase().includes(s)))).sort(sortTasks);
-    if(!items.length)box.appendChild(el('p','note',tasks.length?'Nenhuma tarefa encontrada.':'Nenhuma tarefa ainda. Toque em "Nova tarefa".'));
+    if(!items.length)box.appendChild(el('p','note empty',tasks.length?'Nenhuma tarefa encontrada.':'Nenhuma tarefa ainda. Toque em "Nova tarefa".'));
     items.forEach(t=>{
       const c=el('div','card');
       const h=el('div','row');

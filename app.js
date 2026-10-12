@@ -75,18 +75,35 @@ const convs=[];let cc=null;
 
 // ===== Navegação =====
 const dr=$('drawer');
-NAV.forEach(([id,n])=>{const b=document.createElement('button');b.textContent=n;b.dataset.go=id;b.onclick=()=>go(id);dr.appendChild(b)});
-Object.entries(PEND).forEach(([id,[d,cards]])=>{const s=document.createElement('section');s.className='scr';s.id='s-'+id;s.hidden=true;
+const IC={
+inicio:'<path d="M3.5 11 12 4l8.5 7"/><path d="M5.5 9.8V20h13V9.8"/><path d="M10 20v-5.5h4V20"/>',
+conversas:'<path d="M5 5.5h10.5A1.5 1.5 0 0 1 17 7v6a1.5 1.5 0 0 1-1.5 1.5H10l-3.5 3v-3H5A1.5 1.5 0 0 1 3.5 13V7A1.5 1.5 0 0 1 5 5.5z"/><path d="M17 9.5h2.5A1.5 1.5 0 0 1 21 11v6a1.5 1.5 0 0 1-1.5 1.5H19v3l-3.5-3H12"/>',
+memoria:'<path d="M12 5v14"/><path d="M12 5a3 3 0 0 0-5.6-1.4A3 3 0 0 0 4 8a3 3 0 0 0 .6 4A3.2 3.2 0 0 0 5 16.5 3 3 0 0 0 9 19a3 3 0 0 0 3 0"/><path d="M12 5a3 3 0 0 1 5.6-1.4A3 3 0 0 1 20 8a3 3 0 0 1-.6 4 3.2 3.2 0 0 1-.4 4.5A3 3 0 0 1 15 19a3 3 0 0 1-3 0"/>',
+projetos:'<path d="M3.5 7.5A1.5 1.5 0 0 1 5 6h4l2 2.2h8a1.5 1.5 0 0 1 1.5 1.5v7.8A1.5 1.5 0 0 1 19 19H5a1.5 1.5 0 0 1-1.5-1.5z"/>',
+tarefas:'<rect x="5" y="3.5" width="14" height="17" rx="2.5"/><path d="M9 3.5h6V6H9z"/><path d="m8.8 13.2 2.2 2.2 4.2-4.4"/>',
+agenda:'<rect x="3.5" y="5" width="17" height="15" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/>',
+config:'<path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/>'};
+NAV.forEach(([id,n])=>{const b=document.createElement('button');b.type='button';b.dataset.go=id;b.onclick=()=>go(id);
+b.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">'+IC[id]+'</svg><span class="lb"></span><span class="ct" hidden></span>';
+b.querySelector('.lb').textContent=n;$('dl').appendChild(b)});
+Object.entries(PEND).forEach(([id,[d,cards]])=>{const s=document.createElement('section');s.className='scr pn';s.id='s-'+id;s.hidden=true;
 const p=document.createElement('p');p.className='badge';p.textContent='Pendente · sem integração';const q=document.createElement('p');q.className='note';q.textContent=d;
 const g=document.createElement('div');g.className='cards';
 cards.forEach(c=>{const k=document.createElement('div');k.className='card';const h=document.createElement('h3');h.textContent=c;const t=document.createElement('p');t.textContent='Nenhum item. Esta área ainda não está conectada a dados reais.';k.append(h,t);g.appendChild(k)});
 s.append(p,q,g);$('app').appendChild(s)});
+NAV.forEach(([id,n])=>{const s=$('s-'+id);if(s&&id!=='inicio')s.dataset.t=n});
 function drawer(o){dr.classList.toggle('open',o);$('scrim').hidden=!o;$('menu').setAttribute('aria-expanded',o);if(o)dr.querySelector('button').focus();else $('menu').focus()}
-function go(id){if(id!=='inicio'&&mode!=='idle')stop();
-document.querySelectorAll('.scr').forEach(s=>s.hidden=s.id!=='s-'+id);document.body.dataset.s=id;
+const DESK=matchMedia('(min-width:900px)');let curId='inicio';
+// No computador o rosto fica sempre visível ao lado do painel, então a voz não é interrompida ao trocar de seção.
+// No celular a seção cobre o rosto e o comportamento anterior (parar a voz ao sair do início) é mantido.
+function go(id){curId=id;const dk=DESK.matches;if(id!=='inicio'&&mode!=='idle'&&!dk)stop();
+document.querySelectorAll('.scr').forEach(s=>s.hidden=s.id==='s-inicio'?false:s.id!=='s-'+id);
+$('s-inicio').inert=!dk&&id!=='inicio';document.body.dataset.s=id;
 $('ttl').textContent=NAV.find(n=>n[0]===id)[1];
-dr.querySelectorAll('button').forEach(b=>b.dataset.go===id?b.setAttribute('aria-current','page'):b.removeAttribute('aria-current'));
+dr.querySelectorAll('.dl button').forEach(b=>b.dataset.go===id?b.setAttribute('aria-current','page'):b.removeAttribute('aria-current'));
 if(id==='conversas')renderConvs();if(dr.classList.contains('open'))drawer(false)}
+DESK.addEventListener('change',()=>go(curId));
+$('back').onclick=()=>go('inicio');
 $('menu').onclick=()=>drawer(!dr.classList.contains('open'));$('scrim').onclick=()=>drawer(false);
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&dr.classList.contains('open'))drawer(false)});
 go('inicio');
@@ -196,3 +213,40 @@ $('rm').setAttribute('aria-pressed',reduce);$('rm').onclick=()=>{reduce=!reduce;
 const fs=d=>{fsz=Math.min(22,Math.max(12,fsz+d));document.documentElement.style.setProperty('--fs',fsz+'px')};
 $('fsm').onclick=()=>fs(-1);$('fsp').onclick=()=>fs(1);
 $('tg').onclick=()=>{const s=$('s-inicio').classList.toggle('solo');$('tg').setAttribute('aria-pressed',s);$('tg').textContent=s?'Mostrar conversa':'Só rosto'};
+
+// ===== Menu: nome, status, contadores e cartão "Hoje" (dados reais publicados por tarefas.js e projetos.js) =====
+document.addEventListener('DOMContentLoaded',()=>{
+const C=window.AlyaCore;if(!C)return;
+const data={tasks:undefined,projects:undefined};
+const SUB={idle:'em repouso',perm:'aguardando o microfone',ouvindo:'ouvindo',pensando:'pensando',falando:'falando',falha:'com falha no microfone'};
+const sess=()=>C.session&&C.session();
+const isLate=t=>!!t.due_at&&new Date(t.due_at)<new Date();
+function head(){const s=sess(),u=(s&&s.user)||{},m=u.user_metadata||{};
+const n=s?String(m.full_name||m.name||(u.email||'').split('@')[0]||'').trim():'';
+const t=SUB[$('chip').dataset.m]||SUB.idle;$('dn').textContent=n||'Alya';$('ds').textContent=n?'Alya '+t:t.charAt(0).toUpperCase()+t.slice(1)}
+function ct(id,n,lbl,late){const e=document.querySelector('#dl [data-go="'+id+'"] .ct');if(!e)return;
+e.hidden=!n;e.textContent=n||'';e.classList.toggle('late',!!late);if(n)e.setAttribute('aria-label',n+' '+lbl);else e.removeAttribute('aria-label')}
+function counts(){const t=data.tasks,p=data.projects;
+ct('tarefas',Array.isArray(t)?t.filter(isLate).length:0,'atrasadas',true);
+ct('projetos',Array.isArray(p)?p.filter(x=>x.status==='ativo'||x.status==='pausado').length:0,'projetos ativos',false)}
+function hoje(){const h=$('hoje');h.textContent='';
+const add=(tag,cls,txt,par)=>{const e=document.createElement(tag);if(cls)e.className=cls;if(txt!=null)e.textContent=txt;(par||h).appendChild(e);return e};
+const top=add('div','hh');add('h3','','Hoje',top);
+const tk=data.tasks;
+if(!sess()){add('p','hn','Entre na conta para ver o seu dia.');return}
+if(tk===false){add('p','hn','Não consegui carregar as tarefas agora.');return}
+if(!Array.isArray(tk)){add('p','hn','Carregando…');return}
+const y=new Date().toDateString();
+const it=tk.filter(t=>t.due_at&&(isLate(t)||new Date(t.due_at).toDateString()===y)).sort((a,b)=>new Date(a.due_at)-new Date(b.due_at));
+if(!it.length){add('p','hn','Nada com prazo para hoje.');return}
+const ul=add('ul','hl');
+it.slice(0,5).forEach(t=>{const li=add('li','',null,ul);add('span','tt',t.title,li);
+if(isLate(t))add('span','hb late','Atrasada',li);else add('span','hb',new Date(t.due_at).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}),li)});
+if(it.length>5)add('p','hn','+ '+(it.length-5)+' com prazo hoje ou atrasadas');
+const b=add('button','hv','Ver tarefas');b.type='button';b.onclick=()=>go('tarefas')}
+function all(){head();counts();hoje()}
+new MutationObserver(head).observe($('chip'),{attributes:true,attributeFilter:['data-m']});
+C.bus.on('data',e=>{if(e&&e.k in data){data[e.k]=e.v;counts();hoje()}});
+C.onAuth(all);all();
+setInterval(()=>{counts();hoje()},60000);
+});
