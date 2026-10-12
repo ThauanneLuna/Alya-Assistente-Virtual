@@ -78,3 +78,5 @@ form.row{align-items:center}
 .scr a{color:var(--c);word-break:break-all}
 .scr details{margin:18px 0}
 .scr summary{cursor:pointer;color:#cdb8e0;padding:8px 0}
+
+.badge.late{border-color:#ff8aa8;color:#ff8aa8}

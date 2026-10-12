@@ -139,7 +139,8 @@ function proposal(m){
 }
 
 const subs=[];let ready=false;
-window.AlyaCore={sb,session:()=>sess,el,btn,emsg,onAuth:f=>{subs.push(f);if(ready)setTimeout(f,0)}};
+const L={};
+window.AlyaCore={sb,session:()=>sess,el,btn,emsg,onAuth:f=>{subs.push(f);if(ready)setTimeout(f,0)},bus:{on:(e,f)=>{(L[e]=L[e]||[]).push(f)},emit:(e,a)=>(L[e]||[]).forEach(f=>setTimeout(()=>f(a),0))}};
 window.AlyaAuth={hdr:()=>sess?{Authorization:'Bearer '+sess.access_token}:{},proposal};
 if(sb){
   sb.auth.onAuthStateChange((ev,s)=>{sess=s;if(ev==='TOKEN_REFRESHED')return;ready=true;setTimeout(load,0);subs.forEach(f=>setTimeout(f,0))});

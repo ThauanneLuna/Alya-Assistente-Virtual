@@ -3,12 +3,13 @@
 const C=window.AlyaCore,sec=document.getElementById('s-projetos');
 if(!C||!sec)return;
 const {sb,el,btn,emsg}=C;
-let sess=null,projs=[],notes=[],hist=[],view={n:'list'},filt='ativos',q='',state='load',msg='',busy=false;
+let sess=null,projs=[],notes=[],tks=[],hist=[],view={n:'list'},filt='ativos',q='',state='load',msg='',busy=false;
 const ST={ativo:'Ativo',pausado:'Pausado',concluido:'Concluído',arquivado:'Arquivado'};
 const KIND={decisao:'Decisões confirmadas',ideia:'Ideias provisórias',referencia:'Referências',pendencia:'Pendências'};
 const ONE={decisao:'Decisão',ideia:'Ideia',referencia:'Referência',pendencia:'Pendência'};
 const FILT=[['ativos','Ativos'],['concluidos','Concluídos'],['arquivados','Arquivados'],['todos','Todos']];
 const uid=()=>crypto.randomUUID();
+const tchg=()=>C.bus.emit('tasks','projetos');
 const short=(t,n=80)=>t.length>n?t.slice(0,n)+'…':t;
 
 async function load(){
@@ -16,11 +17,12 @@ async function load(){
   if(!sb||!sess){state='out';render();return}
   state='load';render();
   try{
-    const [p,n]=await Promise.all([
+    const [p,n,tk]=await Promise.all([
       sb.from('projects').select('id,name,description,goal,status,updated_at').is('deleted_at',null).order('updated_at',{ascending:false}),
-      sb.from('project_notes').select('id,project_id,kind,content,resolved,created_at').is('deleted_at',null).order('created_at',{ascending:true})]);
-    if(p.error)throw p.error;if(n.error)throw n.error;
-    projs=p.data||[];notes=n.data||[];state='ok';
+      sb.from('project_notes').select('id,project_id,kind,content,resolved,created_at').is('deleted_at',null).order('created_at',{ascending:true}),
+      sb.from('tasks').select('id,project_id,title,status,due_at').is('deleted_at',null)]);
+    if(p.error)throw p.error;if(n.error)throw n.error;if(tk.error)throw tk.error;
+    projs=p.data||[];notes=n.data||[];tks=tk.data||[];state='ok';
     if(view.n==='detail'){if(projs.some(x=>x.id===view.id))await loadHist();else view={n:'list'}}
   }catch(e){state='err';msg=emsg(e)}
   render();
@@ -63,7 +65,7 @@ function list(){
       const h=el('div','row');h.append(el('h3','',p.name),el('span','badge',ST[p.status]));c.appendChild(h);
       if(p.description)c.appendChild(el('p','mt',short(p.description,140)));
       const nn=notes.filter(n=>n.project_id===p.id);
-      c.appendChild(el('p','note',nn.filter(n=>n.kind==='decisao').length+' decisões · '+nn.filter(n=>n.kind==='pendencia'&&!n.resolved).length+' pendências abertas'));
+      c.appendChild(el('p','note',nn.filter(n=>n.kind==='decisao').length+' decisões · '+nn.filter(n=>n.kind==='pendencia'&&!n.resolved).length+' pendências abertas · '+tks.filter(x=>x.project_id===p.id&&x.status==='pendente').length+' tarefas abertas'));
       c.appendChild(btn('Abrir',async()=>{view={n:'detail',id:p.id};await loadHist();render()}));
       box.appendChild(c)});
   };
@@ -123,12 +125,26 @@ function detail(p){
       run(async()=>{ok(await sb.from('project_notes').insert({project_id:p.id,kind:k,content:x,client_id:uid()}));await log(p.id,ONE[k]+' adicionada: '+short(x));await touch(p)},'Adicionado.')};
     sec.appendChild(f);
   });
-  sec.appendChild(el('h3','','Tarefas'));
-  sec.appendChild(el('p','note','As tarefas ligadas a este projeto aparecem aqui quando a tela de Tarefas estiver pronta.'));
+  const dv=x=>x.due_at?new Date(x.due_at).getTime():8.64e15;
+  const pt=tks.filter(x=>x.project_id===p.id).sort((a,b)=>(a.status==='pendente'?0:1)-(b.status==='pendente'?0:1)||dv(a)-dv(b));
+  sec.appendChild(el('h3','','Tarefas ('+pt.filter(x=>x.status==='pendente').length+' abertas)'));
+  const tb=el('div','mems');if(!pt.length)tb.appendChild(el('p','note','Nenhuma tarefa ligada a este projeto.'));
+  pt.slice(0,20).forEach(x=>{const c=el('div','card');const h=el('div','row');h.append(el('h3',x.status!=='pendente'?'dim':'',x.title));
+    if(x.status==='pendente'&&x.due_at&&new Date(x.due_at)<new Date())h.appendChild(el('span','badge late','Atrasada'));
+    if(x.status!=='pendente')h.appendChild(el('span','badge',x.status==='concluida'?'Concluída':'Cancelada'));c.appendChild(h);
+    if(x.due_at)c.appendChild(el('p','note','Prazo: '+new Date(x.due_at).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'})));
+    if(x.status==='pendente')c.appendChild(btn('Concluir',()=>run(async()=>{ok(await sb.from('tasks').update({status:'concluida',completed_at:new Date().toISOString()}).eq('id',x.id));await log(p.id,'Tarefa concluída: '+short(x.title));await touch(p);tchg()},'Tarefa concluída.')));
+    tb.appendChild(c)});
+  sec.appendChild(tb);
+  const tf=el('form','row');const ti=el('input','');ti.placeholder='Nova tarefa deste projeto';ti.maxLength=200;ti.setAttribute('aria-label','Nova tarefa deste projeto');
+  const ta=el('button','','Adicionar');ta.type='submit';tf.append(ti,ta);
+  tf.onsubmit=ev=>{ev.preventDefault();const x=ti.value.trim();if(!x)return;run(async()=>{ok(await sb.from('tasks').insert({project_id:p.id,title:x,client_id:uid()}));await log(p.id,'Tarefa criada: '+short(x));await touch(p);tchg()},'Tarefa criada.')};
+  sec.appendChild(tf);
   const d=el('details','');d.appendChild(el('summary','','Histórico de alterações ('+hist.length+')'));
   hist.forEach(x=>d.appendChild(el('p','note',new Date(x.created_at).toLocaleString('pt-BR')+' · '+x.summary)));
   sec.appendChild(d);
 }
 
+C.bus.on('tasks',src=>{if(src!=='projetos')load()});
 C.onAuth(load);
 })();
